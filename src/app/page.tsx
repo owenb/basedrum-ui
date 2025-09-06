@@ -15,6 +15,7 @@ import {
   importSongFromJSON
 } from "@/lib/songData";
 import { createSequenceCallback } from "@/lib/sequenceCallback";
+import Link from 'next/link';
 
 const ParticleBackground = dynamic(
   () => import("@/components/ParticleBackground"),
@@ -698,6 +699,12 @@ export default function Home() {
       
       {/* Save/Load Buttons */}
       <div className="absolute top-4 left-4 flex gap-2 z-30">
+        <Link
+          href="/sound-lab"
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
+        >
+          🔬 Sound Lab
+        </Link>
         <button
           onClick={handleSaveSong}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
