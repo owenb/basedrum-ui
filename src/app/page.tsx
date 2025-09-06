@@ -1,20 +1,14 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import * as Tone from "tone";
 import dynamic from "next/dynamic";
 import { 
   DEFAULT_SONG, 
-  SongData, 
-  TrackData,
-  isStepActive,
-  getStepNote,
-  toggleStep,
-  setStepNote,
+  SongData,
   exportSongAsJSON,
   importSongFromJSON
 } from "@/lib/songData";
-import { createSequenceCallback } from "@/lib/sequenceCallback";
+import { BaseDrumAudioEngine } from "@/lib/audioEngine";
 import Link from 'next/link';
 
 const ParticleBackground = dynamic(
@@ -46,7 +40,7 @@ interface GaugeProps {
 }
 
 function CircularGauge({ value, onChange, position }: GaugeProps) {
-  const handleGaugeInteraction = (event: any, targetElement?: HTMLElement) => {
+  const handleGaugeInteraction = (event: React.MouseEvent | React.TouchEvent, targetElement?: HTMLElement) => {
     const target = targetElement || event.currentTarget;
     if (!target || !target.getBoundingClientRect) return;
 
@@ -91,20 +85,18 @@ function CircularGauge({ value, onChange, position }: GaugeProps) {
       }
     }
 
-    console.log(
-      `${position} click angle: ${angle.toFixed(1)}°, Gauge value: ${(
-        gaugeValue * 100
-      ).toFixed(1)}%`
-    );
+    console.log(`${position} click angle: ${angle.toFixed(1)}°, Gauge value: ${(
+      gaugeValue * 100
+    ).toFixed(1)}%`);
     onChange(gaugeValue);
   };
 
-  const handleMouseDown = (event: any) => {
+  const handleMouseDown = (event: React.MouseEvent) => {
     console.log(`${position} gauge mousedown triggered`);
     const targetElement = event.currentTarget;
     handleGaugeInteraction(event, targetElement);
 
-    const handleMouseMove = (e: any) => {
+    const handleMouseMove = (e: MouseEvent) => {
       console.log(`${position} gauge mousemove triggered`);
       handleGaugeInteraction(e, targetElement);
     };
@@ -118,12 +110,12 @@ function CircularGauge({ value, onChange, position }: GaugeProps) {
     document.addEventListener("mouseup", handleMouseUp);
   };
 
-  const handleTouchStart = (event: any) => {
+  const handleTouchStart = (event: React.TouchEvent) => {
     event.preventDefault();
     const targetElement = event.currentTarget;
     handleGaugeInteraction(event, targetElement);
 
-    const handleTouchMove = (e: any) => {
+    const handleTouchMove = (e: TouchEvent) => {
       e.preventDefault();
       handleGaugeInteraction(e, targetElement);
     };
@@ -149,8 +141,6 @@ function CircularGauge({ value, onChange, position }: GaugeProps) {
   const circumference = 2 * Math.PI * radius;
   const quarterCircumference = circumference / 4; // Only quarter of the circle
 
-  // Calculate rotation for the active gauge
-  const rotation = value * 360;
 
   return (
     <>
@@ -217,28 +207,15 @@ export default function Home() {
   const [hasStarted, setHasStarted] = useState(false);
   const [leftGauge, setLeftGauge] = useState(0); // Filter cutoff
   const [rightGauge, setRightGauge] = useState(0); // Reverb/delay
-  const [kickMuted, setKickMuted] = useState(false);
-  const [hihat909Muted, setHihat909Muted] = useState(false);
-  const [hihatMuted, setHihatMuted] = useState(false);
-  const [bassMuted, setBassMuted] = useState(false);
-  const [leadMuted, setLeadMuted] = useState(false);
-  const [snareMuted, setSnareMuted] = useState(false);
-  const [rumbleMuted, setRumbleMuted] = useState(false);
-  const [rideMuted, setRideMuted] = useState(false);
-  const [clapMuted, setClapMuted] = useState(false);
-  const [acidMuted, setAcidMuted] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
-  const [showLabel, setShowLabel] = useState<string | null>(null);
+  const [showLabel] = useState<string | null>(null);
   const [beatIntensity, setBeatIntensity] = useState(0);
   const [editingTrack, setEditingTrack] = useState<string | null>(null);
   const [showLoadModal, setShowLoadModal] = useState(false);
   const [loadJsonText, setLoadJsonText] = useState("");
   const [songData, setSongData] = useState<SongData>(DEFAULT_SONG);
   const songDataRef = useRef<SongData>(songData);
-  const synthsRef = useRef<any>(null);
-  const sequenceRef = useRef<any>(null);
-  const filterRef = useRef<any>(null);
-  const reverbRef = useRef<any>(null);
+  const audioEngineRef = useRef<BaseDrumAudioEngine | null>(null);
   // Keep songDataRef updated
   useEffect(() => {
     songDataRef.current = songData;
@@ -256,287 +233,24 @@ export default function Home() {
     clap: false,
     acid: false,
   });
-  const stepCallbackRef = useRef<any>(null);
 
   useEffect(() => {
     const initializeAudio = async () => {
-      // Create effects chain - START COMPLETELY NEUTRAL
-      const filter = new Tone.Filter({
-        frequency: 20000, // Essentially bypassed (no filtering)
-        type: "lowpass",
-        rolloff: -24,
+      const audioEngine = new BaseDrumAudioEngine({
+        onStepChange: setCurrentStep,
+        onBeatIntensity: setBeatIntensity
       });
 
-      const reverb = new Tone.Reverb({
-        decay: 1.5,
-        wet: 0.0, // Completely dry (no reverb)
-      });
-
-      await reverb.ready;
-
-      // Connect effects chain: instruments -> filter -> reverb -> destination
-      filter.connect(reverb);
-      reverb.toDestination();
-
-      const kick = new Tone.MembraneSynth({
-        pitchDecay: 0.05,
-        octaves: 4,
-        oscillator: { type: "sine" },
-        envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4 },
-      }).connect(filter);
-
-      // Open hi-hat with metallic character
-      const hihat = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: {
-          attack: 0.002,
-          decay: 0.03,
-          sustain: 0.2,
-          release: 0.15, // Longer for open hat
-        },
-      });
-
-      // Add high-pass filter for metallic sound
-      const hihatFilter = new Tone.Filter({
-        frequency: 5000,
-        type: "highpass",
-        rolloff: -12,
-      });
-
-      hihat.connect(hihatFilter);
-      hihatFilter.connect(filter);
-
-      // Authentic TR-909 hi-hat using multiple oscillators + noise
-      const hihat909Osc1 = new Tone.Oscillator(320, "square");
-      const hihat909Osc2 = new Tone.Oscillator(800, "square");
-      const hihat909Osc3 = new Tone.Oscillator(540, "square");
-      const hihat909Noise = new Tone.Noise("white");
-
-      // 909 envelope - sharp attack, quick decay
-      const hihat909Env = new Tone.AmplitudeEnvelope({
-        attack: 0.001,
-        decay: 0.05,
-        sustain: 0,
-        release: 0.01,
-      });
-
-      // Mix the oscillators and noise - MUCH LOUDER
-      const hihat909Mixer = new Tone.Gain(2.0);
-
-      // High-pass filter for metallic character
-      const hihat909Filter = new Tone.Filter({
-        frequency: 7000,
-        type: "highpass",
-        rolloff: -24,
-      });
-
-      // Connect everything
-      hihat909Osc1.connect(hihat909Mixer);
-      hihat909Osc2.connect(hihat909Mixer);
-      hihat909Osc3.connect(hihat909Mixer);
-      hihat909Noise.connect(hihat909Mixer);
-
-      hihat909Mixer.connect(hihat909Env);
-      hihat909Env.connect(hihat909Filter);
-      hihat909Filter.connect(filter);
-
-      // Start the oscillators and noise
-      hihat909Osc1.start();
-      hihat909Osc2.start();
-      hihat909Osc3.start();
-      hihat909Noise.start();
-
-      const bass = new Tone.Synth({
-        oscillator: { type: "sawtooth" },
-        envelope: { attack: 0.01, decay: 0.1, sustain: 0.5, release: 0.4 },
-      }).connect(filter);
-
-      const lead = new Tone.Synth({
-        oscillator: { type: "square" },
-        envelope: { attack: 0.05, decay: 0.2, sustain: 0.3, release: 0.7 },
-      }).connect(filter);
-
-      // Snare drum - classic 808/909 style with noise and tone
-      const snare = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: {
-          attack: 0.001,
-          decay: 0.2,
-          sustain: 0.0,
-          release: 0.1,
-        },
-      });
-
-      // Add a filter for snare character
-      const snareFilter = new Tone.Filter({
-        frequency: 2000,
-        type: "bandpass",
-        Q: 2,
-      });
-
-      snare.connect(snareFilter);
-      snareFilter.connect(filter);
-
-      // RUMBLE BASS - Rule 4: Deep sub-bass foundation
-      const rumble = new Tone.Oscillator({
-        frequency: "E0", // Super low sub-bass
-        type: "sine",
-      });
-
-      const rumbleEnv = new Tone.AmplitudeEnvelope({
-        attack: 0.05,
-        decay: 0.1,
-        sustain: 0.8,
-        release: 2,
-      });
-
-      const rumbleFilter = new Tone.Filter({
-        frequency: 100,
-        type: "lowpass",
-        rolloff: -24,
-      });
-
-      rumble.connect(rumbleEnv);
-      rumbleEnv.connect(rumbleFilter);
-      rumbleFilter.connect(filter);
-
-      // RIDE CYMBAL - Subtle high-frequency rhythm (calmed down)
-      const ride = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: {
-          attack: 0.002, // Slightly softer attack
-          decay: 0.2, // Shorter decay for less presence
-          sustain: 0.05, // Much less sustain
-          release: 0.15, // Shorter release
-        },
-      });
-
-      const rideFilter = new Tone.Filter({
-        frequency: 4000, // Higher cutoff to make it less aggressive
-        type: "highpass",
-        rolloff: -12,
-      });
-
-      ride.connect(rideFilter);
-      rideFilter.connect(filter);
-
-      // CLAP - For syncopation and groove
-      const clap = new Tone.NoiseSynth({
-        noise: { type: "white" },
-        envelope: {
-          attack: 0.005,
-          decay: 0.03,
-          sustain: 0,
-          release: 0.01,
-        },
-      });
-
-      const clapFilter = new Tone.Filter({
-        frequency: 1500,
-        type: "bandpass",
-        Q: 1,
-      });
-
-      const clapReverb = new Tone.Reverb({
-        decay: 0.5,
-        wet: 0.2,
-      });
-
-      await clapReverb.ready;
-      clap.connect(clapFilter);
-      clapFilter.connect(clapReverb);
-      clapReverb.connect(filter);
-
-      // ACID LINE - Classic 303-style acid synth
-      const acid = new Tone.MonoSynth({
-        oscillator: {
-          type: "sawtooth",
-        },
-        envelope: {
-          attack: 0.01,
-          decay: 0.2,
-          sustain: 0.3,
-          release: 0.2,
-        },
-        filterEnvelope: {
-          attack: 0.01,
-          decay: 0.2,
-          sustain: 0.4,
-          release: 0.2,
-          baseFrequency: 200,
-          octaves: 3,
-        },
-        filter: {
-          Q: 6,
-          type: "lowpass",
-          rolloff: -24,
-        },
-      }).connect(filter);
-
-      rumble.start(); // Start the oscillator
-
-      synthsRef.current = {
-        kick,
-        hihat,
-        bass,
-        lead,
-        snare,
-        rumble,
-        rumbleEnv,
-        ride,
-        clap,
-        acid,
-        hihat909Env,
-        hihat909Osc1,
-        hihat909Osc2,
-        hihat909Osc3,
-        hihat909Noise,
-      };
-      filterRef.current = filter;
-      reverbRef.current = reverb;
-
-      // Create sequence with dynamic callback
-      const sequenceCallback = createSequenceCallback(
-        synthsRef,
-        muteStatesRef,
-        songDataRef,
-        setCurrentStep,
-        setBeatIntensity
-      );
-
-      const sequence = new Tone.Sequence(
-        sequenceCallback,
-        Array.from({ length: 128 }, (_, i) => i),
-        "16n"
-      );
-
-      sequence.loop = true; // Ensure the sequence loops
-      sequenceRef.current = sequence;
+      await audioEngine.initialize(songDataRef, muteStatesRef);
+      audioEngineRef.current = audioEngine;
       setIsLoaded(true);
     };
 
     initializeAudio();
 
     return () => {
-      if (sequenceRef.current) {
-        sequenceRef.current.dispose();
-      }
-      if (synthsRef.current) {
-        Object.values(synthsRef.current).forEach((synth: any) => {
-          if (synth && synth.dispose) synth.dispose();
-        });
-        if (synthsRef.current.rumble) {
-          synthsRef.current.rumble.stop();
-        }
-        // Stop 909 components
-        if (synthsRef.current.hihat909Osc1)
-          synthsRef.current.hihat909Osc1.stop();
-        if (synthsRef.current.hihat909Osc2)
-          synthsRef.current.hihat909Osc2.stop();
-        if (synthsRef.current.hihat909Osc3)
-          synthsRef.current.hihat909Osc3.stop();
-        if (synthsRef.current.hihat909Noise)
-          synthsRef.current.hihat909Noise.stop();
+      if (audioEngineRef.current) {
+        audioEngineRef.current.dispose();
       }
     };
   }, []);
@@ -544,26 +258,20 @@ export default function Home() {
   // Handle FILTER changes (left gauge) - 0% = clean, 100% = filtered
   const handleFilterChange = (value: number) => {
     setLeftGauge(value);
-    if (filterRef.current) {
-      // Map 0-1 to 20000Hz-350Hz (0 = no processing, 1 = heavy filter)
+    if (audioEngineRef.current) {
+      audioEngineRef.current.setFilterValue(value);
       const frequency = 20000 - value * 19650;
-      filterRef.current.frequency.rampTo(frequency, 0.1);
-      console.log(
-        `Filter: ${value === 0 ? "OFF" : frequency.toFixed(0) + "Hz"}`
-      );
+      console.log(`Filter: ${value === 0 ? "OFF" : frequency.toFixed(0) + "Hz"}`);
     }
   };
 
   // Handle REVERB changes (right gauge) - 0% = dry, 100% = wet
   const handleReverbChange = (value: number) => {
     setRightGauge(value);
-    if (reverbRef.current) {
-      // Map 0-1 to 0-0.5 wet amount (0 = no processing, 1 = prominent reverb)
+    if (audioEngineRef.current) {
+      audioEngineRef.current.setReverbValue(value);
       const wetAmount = value * 0.5;
-      reverbRef.current.wet.rampTo(wetAmount, 0.1);
-      console.log(
-        `Reverb: ${value === 0 ? "OFF" : (wetAmount * 100).toFixed(0) + "%"}`
-      );
+      console.log(`Reverb: ${value === 0 ? "OFF" : (wetAmount * 100).toFixed(0) + "%"}`);
     }
   };
 
@@ -635,26 +343,12 @@ export default function Home() {
   };
 
   const handlePlay = async () => {
-    if (!isLoaded || !sequenceRef.current) return;
+    if (!isLoaded || !audioEngineRef.current) return;
 
-    if (Tone.Transport.state !== "started") {
-      await Tone.start();
-      Tone.Transport.bpm.value = 128;
-    }
-
-    if (isPlaying) {
-      // Pause - stop transport but keep sequence position
-      Tone.Transport.pause();
-      setIsPlaying(false);
-    } else {
-      // Resume/Start - continue from current position
-      Tone.Transport.start();
-      if (sequenceRef.current.state !== "started") {
-        sequenceRef.current.start(0);
-      }
-      setIsPlaying(true);
-      setHasStarted(true);
-    }
+    await audioEngineRef.current.play();
+    const engineState = audioEngineRef.current.getState();
+    setIsPlaying(engineState.isPlaying);
+    setHasStarted(true);
   };
 
   const handleSaveSong = () => {

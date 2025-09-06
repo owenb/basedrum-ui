@@ -1,0 +1,36 @@
+utils:
+  public-methods:
+    language: TypeScript
+    pattern: |
+      public $METHOD($$$PARAMS) { $$$BODY }
+    constraints:
+      METHOD:
+        regex: "^[a-zA-Z]"
+
+rules:
+  - id: find-audio-engine-methods
+    message: "Found audio engine method"
+    language: TypeScript
+    rule:
+      pattern: |
+        public async $METHOD($$$PARAMS): Promise<$TYPE> { $$$BODY }
+
+  - id: find-usestate-hooks
+    message: "Found useState hook"  
+    language: TypeScript
+    rule:
+      pattern: |
+        const [$STATE, $SETTER] = useState($INITIAL)
+
+  - id: find-console-logs
+    message: "Found console.log statement"
+    language: TypeScript  
+    rule:
+      pattern: console.log($$$ARGS)
+
+  - id: find-async-functions
+    message: "Found async function"
+    language: TypeScript
+    rule:
+      pattern: |
+        const $FUNC = async ($$$PARAMS) => { $$$BODY }
