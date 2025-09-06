@@ -22,7 +22,7 @@ export function createSequenceCallback(
     const synths = synthsRef.current;
 
     // KICK
-    if (!muteStatesRef.current.kick && currentSong.tracks.kick) {
+    if (!muteStatesRef.current.kick && currentSong.tracks.kick && currentSong.tracks.kick.volume > -50) {
       const track = currentSong.tracks.kick;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 1.0;
@@ -34,7 +34,7 @@ export function createSequenceCallback(
     }
 
     // HIHAT 909
-    if (!muteStatesRef.current.hihat909 && currentSong.tracks.hihat909) {
+    if (!muteStatesRef.current.hihat909 && currentSong.tracks.hihat909 && currentSong.tracks.hihat909.volume > -50) {
       const track = currentSong.tracks.hihat909;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 0.8;
@@ -43,7 +43,7 @@ export function createSequenceCallback(
     }
 
     // OPEN HIHAT
-    if (!muteStatesRef.current.hihat && currentSong.tracks.hihat) {
+    if (!muteStatesRef.current.hihat && currentSong.tracks.hihat && currentSong.tracks.hihat.volume > -50) {
       const track = currentSong.tracks.hihat;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 0.5;
@@ -52,7 +52,7 @@ export function createSequenceCallback(
     }
 
     // SNARE
-    if (!muteStatesRef.current.snare && currentSong.tracks.snare) {
+    if (!muteStatesRef.current.snare && currentSong.tracks.snare && currentSong.tracks.snare.volume > -50) {
       const track = currentSong.tracks.snare;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 0.9;
@@ -62,7 +62,7 @@ export function createSequenceCallback(
     }
 
     // BASS
-    if (!muteStatesRef.current.bass && currentSong.tracks.bass) {
+    if (!muteStatesRef.current.bass && currentSong.tracks.bass && currentSong.tracks.bass.volume > -50) {
       const track = currentSong.tracks.bass;
       const patternIndex = track.pattern.indexOf(step);
       if (patternIndex !== -1) {
@@ -73,7 +73,7 @@ export function createSequenceCallback(
     }
 
     // LEAD
-    if (!muteStatesRef.current.lead && currentSong.tracks.lead) {
+    if (!muteStatesRef.current.lead && currentSong.tracks.lead && currentSong.tracks.lead.volume > -50) {
       const track = currentSong.tracks.lead;
       const patternIndex = track.pattern.indexOf(step);
       if (patternIndex !== -1) {
@@ -84,7 +84,7 @@ export function createSequenceCallback(
     }
 
     // RUMBLE
-    if (!muteStatesRef.current.rumble && currentSong.tracks.rumble) {
+    if (!muteStatesRef.current.rumble && currentSong.tracks.rumble && currentSong.tracks.rumble.volume > -50) {
       const track = currentSong.tracks.rumble;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 0.4;
@@ -93,7 +93,7 @@ export function createSequenceCallback(
     }
 
     // RIDE
-    if (!muteStatesRef.current.ride && currentSong.tracks.ride) {
+    if (!muteStatesRef.current.ride && currentSong.tracks.ride && currentSong.tracks.ride.volume > -50) {
       const track = currentSong.tracks.ride;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 0.6;
@@ -102,7 +102,7 @@ export function createSequenceCallback(
     }
 
     // CLAP
-    if (!muteStatesRef.current.clap && currentSong.tracks.clap) {
+    if (!muteStatesRef.current.clap && currentSong.tracks.clap && currentSong.tracks.clap.volume > -50) {
       const track = currentSong.tracks.clap;
       if (track.pattern.includes(step)) {
         const velocity = track.velocity?.[step] || 0.7;
@@ -111,7 +111,7 @@ export function createSequenceCallback(
     }
 
     // ACID
-    if (!muteStatesRef.current.acid && currentSong.tracks.acid) {
+    if (!muteStatesRef.current.acid && currentSong.tracks.acid && currentSong.tracks.acid.volume > -50) {
       const track = currentSong.tracks.acid;
       const patternIndex = track.pattern.indexOf(step);
       if (patternIndex !== -1) {

@@ -571,17 +571,25 @@ export default function Home() {
     setEditingTrack(trackName);
   };
 
-  const handleSavePattern = (trackName: string, pattern: number[], notes?: string[]) => {
+  const handleSavePattern = (trackName: string, pattern: number[], notes?: string[], volume?: number) => {
     setSongData(prev => {
       const newSong = { ...prev };
       newSong.tracks[trackName] = {
         ...newSong.tracks[trackName],
         pattern: pattern,
-        notes: notes || newSong.tracks[trackName].notes
+        notes: notes || newSong.tracks[trackName].notes,
+        volume: volume !== undefined ? volume : newSong.tracks[trackName].volume
       };
       return newSong;
     });
-    console.log(`Saved pattern for ${trackName}:`, pattern, notes);
+    console.log(`Saved pattern for ${trackName}:`, pattern, notes, volume);
+  };
+
+  // Helper function to determine if track is effectively muted
+  const isTrackEffectivelyMuted = (trackName: string) => {
+    const track = songData.tracks[trackName];
+    if (!track) return true;
+    return track.muted || track.volume <= -50;
   };
 
   // Mute toggle functions
@@ -733,7 +741,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.kick?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('kick') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaVolumeUp size={20} />
@@ -752,7 +760,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.hihat909?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('hihat909') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaBolt size={20} />
@@ -771,7 +779,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.hihat?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('hihat') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaCircle size={20} />
@@ -790,7 +798,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.bass?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('bass') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaMusic size={20} />
@@ -809,7 +817,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.lead?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('lead') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaKeyboard size={20} />
@@ -828,7 +836,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.snare?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('snare') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaCircle2 size={20} />
@@ -850,7 +858,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.rumble?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('rumble') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaVolumeUp2 size={20} />
@@ -869,7 +877,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.ride?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('ride') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaCompactDisc size={20} />
@@ -888,7 +896,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.clap?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('clap') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaHandPaper size={20} />
@@ -907,7 +915,7 @@ export default function Home() {
           `}
           style={{
             backgroundColor: 'transparent',
-            color: songData.tracks.acid?.muted ? '#6b7280' : 'rgb(0, 0, 255)'
+            color: isTrackEffectivelyMuted('acid') ? '#6b7280' : 'rgb(0, 0, 255)'
           }}
         >
           <FaWaveSquare size={20} />
@@ -1015,8 +1023,9 @@ export default function Home() {
           pattern={songData.tracks[editingTrack].pattern || []}
           notes={songData.tracks[editingTrack].notes}
           muted={songData.tracks[editingTrack].muted}
-          onSave={(pattern, notes) => {
-            handleSavePattern(editingTrack, pattern, notes);
+          volume={songData.tracks[editingTrack].volume}
+          onSave={(pattern, notes, volume) => {
+            handleSavePattern(editingTrack, pattern, notes, volume);
             setEditingTrack(null);
           }}
           onToggleMute={() => {

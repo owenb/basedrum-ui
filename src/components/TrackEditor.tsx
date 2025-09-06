@@ -11,7 +11,8 @@ interface TrackEditorProps {
   pattern: number[];
   notes?: string[];
   muted?: boolean;
-  onSave: (pattern: number[], notes?: string[]) => void;
+  volume?: number;
+  onSave: (pattern: number[], notes?: string[], volume?: number) => void;
   onToggleMute?: () => void;
   currentStep?: number;
   isPlaying?: boolean;
@@ -25,6 +26,7 @@ export default function TrackEditor({
   pattern: initialPattern,
   notes: initialNotes,
   muted = false,
+  volume = -10,
   onSave,
   onToggleMute,
   currentStep = 0,
@@ -33,6 +35,7 @@ export default function TrackEditor({
   const [pattern, setPattern] = useState<number[]>(initialPattern);
   const [selectedNote, setSelectedNote] = useState<string>("C3");
   const [noteData, setNoteData] = useState<{ [key: number]: string }>({});
+  const [trackVolume, setTrackVolume] = useState<number>(volume);
   
   // Initialize noteData from notes array
   useEffect(() => {
@@ -51,13 +54,17 @@ export default function TrackEditor({
     setPattern(initialPattern);
   }, [initialPattern]);
 
+  useEffect(() => {
+    setTrackVolume(volume);
+  }, [volume]);
+
   const handleSave = () => {
     if (trackType === "melodic") {
       // Create notes array that matches the pattern array
       const notes = pattern.map(step => noteData[step] || "C3");
-      onSave(pattern, notes);
+      onSave(pattern, notes, trackVolume);
     } else {
-      onSave(pattern);
+      onSave(pattern, undefined, trackVolume);
     }
     onClose();
   };
@@ -134,15 +141,35 @@ export default function TrackEditor({
               <button
                 onClick={onToggleMute}
                 className={`p-2 rounded-lg transition-colors ${
-                  muted
+                  muted || trackVolume <= -50
                     ? "bg-red-600 text-white hover:bg-red-700"
                     : "bg-gray-600 text-gray-300 hover:bg-gray-500"
                 }`}
-                title={muted ? "Unmute track" : "Mute track"}
+                title={(muted || trackVolume <= -50) ? "Unmute track" : "Mute track"}
               >
-                {muted ? <FaVolumeMute size={18} /> : <FaVolumeUp size={18} />}
+                {(muted || trackVolume <= -50) ? <FaVolumeMute size={18} /> : <FaVolumeUp size={18} />}
               </button>
             )}
+            
+            {/* Volume Control */}
+            <div className="flex items-center gap-2">
+              <FaVolumeUp size={14} className="text-gray-400" />
+              <input
+                type="range"
+                min="-50"
+                max="0"
+                step="1"
+                value={trackVolume}
+                onChange={(e) => setTrackVolume(Number(e.target.value))}
+                className="w-20 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider"
+                style={{
+                  background: `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${((trackVolume + 50) / 50) * 100}%, #374151 ${((trackVolume + 50) / 50) * 100}%, #374151 100%)`
+                }}
+              />
+              <span className="text-xs text-gray-400 w-8 text-center">
+                {trackVolume}dB
+              </span>
+            </div>
           </div>
           <div className="flex gap-4">
             <button
