@@ -7,6 +7,49 @@ import { z } from 'zod';
  * ensuring data integrity and preventing runtime errors during import/export.
  */
 
+// Synthesis parameters validation schema
+export const SynthesisSchema = z.object({
+  // Instrument variant (for lead and acid tracks)
+  variant: z.enum(['classic', 'deep', 'screamer', 'liquid', 'stab', 'pluck', 'pad']).optional(),
+  
+  // Oscillator configuration
+  oscillator: z.object({
+    type: z.enum(['sine', 'square', 'sawtooth', 'triangle', 'pwm', 'pulse', 'white', 'pink', 'brown']).optional(),
+    frequency: z.union([z.number(), z.string()]).optional(), // Number or note string
+    partialCount: z.number().optional(),
+    modulationType: z.string().optional(),
+  }).optional(),
+  
+  // Envelope ADSR
+  envelope: z.object({
+    attack: z.number().min(0).max(10),
+    decay: z.number().min(0).max(10),
+    sustain: z.number().min(0).max(1),
+    release: z.number().min(0).max(10),
+  }).optional(),
+  
+  // Filter envelope (for MonoSynth/DuoSynth)
+  filterEnvelope: z.object({
+    attack: z.number().min(0).max(10),
+    decay: z.number().min(0).max(10),
+    sustain: z.number().min(0).max(1),
+    release: z.number().min(0).max(10),
+    baseFrequency: z.number().min(20).max(20000),
+    octaves: z.number().min(0).max(8),
+  }).optional(),
+  
+  // Filter configuration
+  filter: z.object({
+    type: z.enum(['lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'notch', 'allpass', 'peaking']),
+    frequency: z.number().min(20).max(20000),
+    Q: z.number().min(0.001).max(100),
+    rolloff: z.union([z.literal(-12), z.literal(-24), z.literal(-48), z.literal(-96)]).optional(),
+  }).optional(),
+  
+  // Additional custom parameters (for special instruments like 909 hi-hat)
+  custom: z.record(z.string(), z.any()).optional(),
+}).optional();
+
 // Track data validation schema
 export const TrackDataSchema = z.object({
   // Pattern: Array of step numbers where instrument triggers (0-127)
@@ -28,8 +71,29 @@ export const TrackDataSchema = z.object({
   volume: z.number(),
   
   // Synthesis: Complete synthesizer parameters (optional, for save/load)
-  synthesis: z.any().optional(),
+  synthesis: SynthesisSchema,
 });
+
+// Pattern generation configuration schema (for Sound Lab)
+export const PatternGenerationSchema = z.object({
+  // Musical settings
+  key: z.enum(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']).optional(),
+  scale: z.enum(['minor', 'minor_pentatonic', 'harmonic_minor', 'dorian', 'phrygian']).optional(),
+  octave: z.number().int().min(0).max(8).optional(),
+  
+  // Pattern configuration
+  density: z.number().min(0).max(1).optional(),      // How many steps are active
+  groove: z.number().min(0).max(1).optional(),       // Amount of swing/humanization
+  complexity: z.number().min(0).max(1).optional(),   // Pattern complexity
+  swing: z.number().min(0).max(1).optional(),        // Shuffle timing
+  humanization: z.number().min(0).max(1).optional(), // Micro-timing variations
+  
+  // Groove template
+  grooveTemplate: z.string().optional(), // e.g., 'berlin_machine', 'subtle_swing'
+  
+  // Style preset
+  stylePreset: z.enum(['classic', 'minimal', 'driving', 'experimental', 'ambient']).optional(),
+}).optional();
 
 // Main song data validation schema
 export const SongDataSchema = z.object({
@@ -45,6 +109,8 @@ export const SongDataSchema = z.object({
     format: z.string().refine(val => val === "basedrum-v1", {
       message: "Format must be 'basedrum-v1'"
     }),
+    // Pattern generation settings (optional, from Sound Lab)
+    patternGeneration: PatternGenerationSchema,
   }),
   
   // Effects chain settings
@@ -76,6 +142,8 @@ export const SongDataSchema = z.object({
 });
 
 // Type exports for TypeScript usage
+export type Synthesis = z.infer<typeof SynthesisSchema>;
+export type PatternGeneration = z.infer<typeof PatternGenerationSchema>;
 export type TrackData = z.infer<typeof TrackDataSchema>;
 export type SongData = z.infer<typeof SongDataSchema>;
 
