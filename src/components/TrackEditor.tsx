@@ -197,7 +197,7 @@ export default function TrackEditor({
               isPlaying={isPlaying}
             />
           ) : (
-            <div className="flex flex-col lg:flex-row gap-4">
+            <div className="flex gap-2">
               <PianoKeyboard
                 selectedNote={selectedNote}
                 onSelectNote={setSelectedNote}
@@ -289,14 +289,14 @@ function PianoKeyboard({
   pianoKeys: { note: string; color: string }[];
 }) {
   return (
-    <div className="flex flex-col w-20 lg:w-32 bg-gray-800 rounded-lg p-2 max-h-[60vh] overflow-y-auto">
-      <div className="text-xs text-gray-400 mb-2 text-center">Keys</div>
+    <div className="flex flex-col w-14 bg-gray-800 rounded-lg p-1 max-h-[60vh] overflow-y-auto">
+      <div className="text-xs text-gray-400 mb-1 text-center">Keys</div>
       {pianoKeys.map(({ note, color }) => (
         <button
           key={note}
           onClick={() => onSelectNote(note)}
           className={`
-            h-8 mb-1 rounded transition-all text-xs
+            h-6 mb-px rounded text-xs
             ${color === "white" 
               ? selectedNote === note
                 ? "bg-blue-500 text-white"
@@ -339,47 +339,72 @@ function PianoRoll({
   return (
     <div className="flex-1 overflow-x-auto">
       <div className="min-w-[600px]">
-        {/* Timeline header */}
-        <div className="grid grid-cols-32 gap-px mb-2">
-          {Array.from({ length: totalSteps }, (_, i) => (
-            <div key={i} className="text-center text-xs text-gray-500">
-              {(i % 4) + 1}
-            </div>
-          ))}
-        </div>
-
         {/* Piano roll grid */}
-        <div className="space-y-px bg-gray-900 p-2 rounded-lg max-h-[50vh] overflow-y-auto">
-          {pianoKeys.map(({ note }) => (
-            <div key={note} className="grid grid-cols-32 gap-px h-6">
+        <div className="flex-1 bg-gray-900 rounded-lg overflow-x-auto overflow-y-auto max-h-[60vh]">
+          <div className="min-w-[320px] p-1">
+            {/* Timeline header with bar numbers */}
+            <div className="flex gap-px mb-1">
               {Array.from({ length: totalSteps }, (_, i) => {
-                const stepIndex = i * 4;
-                const isActive = pattern.includes(stepIndex) && noteData[stepIndex] === note;
-                const isCurrent = Math.floor(currentStep / 4) === i && isPlaying;
-
+                const barNumber = Math.floor(i / 4) + 1;
+                const stepInBar = (i % 4) + 1;
+                const isFirstStepInBar = stepInBar === 1;
+                
                 return (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      if (selectedNote === note) {
-                        onToggleStep(stepIndex);
-                      }
-                    }}
-                    className={`
-                      rounded transition-all duration-100
-                      ${isActive
-                        ? "bg-blue-600 shadow-md"
-                        : note === selectedNote
-                          ? "bg-gray-700 hover:bg-gray-600"
-                          : "bg-gray-800 hover:bg-gray-750"
-                      }
-                      ${isCurrent ? "ring-1 ring-white" : ""}
-                    `}
-                  />
+                  <div 
+                    key={i} 
+                    className={`w-4 text-center text-xs flex flex-col ${
+                      isFirstStepInBar ? 'border-l border-gray-600' : ''
+                    }`}
+                  >
+                    {isFirstStepInBar && (
+                      <div className="text-gray-400 font-medium mb-px">
+                        {barNumber}
+                      </div>
+                    )}
+                    <div className="text-gray-500">
+                      {stepInBar}
+                    </div>
+                  </div>
                 );
               })}
             </div>
-          ))}
+            
+            {/* All note rows */}
+            {pianoKeys.map(({ note }) => (
+              <div key={note} className="flex items-center mb-px">
+                <div className="flex gap-px">
+                  {Array.from({ length: totalSteps }, (_, i) => {
+                    const stepIndex = i * 4;
+                    const isActive = pattern.includes(stepIndex) && noteData[stepIndex] === note;
+                    const isCurrent = Math.floor(currentStep / 4) === i && isPlaying;
+                    const isFirstStepInBar = (i % 4) === 0;
+
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          if (selectedNote === note) {
+                            onToggleStep(stepIndex);
+                          }
+                        }}
+                        className={`
+                          w-4 h-4 rounded-sm transition-all duration-100 flex-shrink-0
+                          ${isActive
+                            ? "bg-blue-600 shadow-md"
+                            : note === selectedNote
+                              ? "bg-gray-600 hover:bg-gray-500"
+                              : "bg-gray-800 hover:bg-gray-700"
+                          }
+                          ${isCurrent ? "ring-1 ring-white" : ""}
+                          ${isFirstStepInBar ? "border-l border-gray-600" : ""}
+                        `}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
